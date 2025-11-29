@@ -34,8 +34,12 @@ export default function ColorsPicker() {
                 {defaultColors.map((color, index) => (
                     <div key={index}
                          onClick={() => changeColor(color)}
-                         className={"rounded-full p-4 w-fit border-black " + (penSettings.color === color ? 'border-2' : '')}
-                         style={{backgroundColor: color}}>
+                         className="rounded-full w-fit border-black"
+                         style={{
+                             backgroundColor: color,
+                            padding: penSettings.color === color ? '1rem' : '1.1rem',
+                             borderWidth: penSettings.color === color ? '0.1rem' : '0',
+                         }}>
                     </div>
                 ))}
             </div>
