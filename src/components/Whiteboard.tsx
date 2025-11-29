@@ -1,9 +1,13 @@
-import {MouseEvent, useCallback, useEffect, useRef, useState} from "react";
+'use client';
+import {MouseEvent, useCallback, useContext, useEffect, useRef, useState} from "react";
 import SvgPath from "@/src/components/SvgPath";
+import {PenSettingsContext} from "@/src/contexts/PenSettingsContext";
 
 type Path = {
     value: string;
-    key: number;
+    color: string;
+    width: number;
+    key?: number;
 }
 
 interface Event {
@@ -12,10 +16,12 @@ interface Event {
 
 export default function Whiteboard() {
     const [isDrawing, setIsDrawing] = useState(false);
-    const [currentPath, setCurrentPath] = useState<string | null>(null);
+    const [currentPath, setCurrentPath] = useState<Path | null>(null);
     const [paths, setPaths] = useState<Path[]>([]);
     const [events, setEvents] = useState<Event[]>([{pathStateAfter: []}]);
     const [undoneEvents, setUndoneEvents] = useState<Event[]>([]);
+
+    const penSettings = useContext(PenSettingsContext);
 
     const svg = useRef<SVGSVGElement | null>(null);
 
@@ -28,12 +34,16 @@ export default function Whiteboard() {
         const x = Math.round(e.clientX - rect.left);
         const y = Math.round(e.clientY - rect.top);
 
-        setCurrentPath(`M${x} ${y}`);
+        setCurrentPath({
+            value: `M${x} ${y}`,
+            color: penSettings.color,
+            width: penSettings.width,
+        });
         setIsDrawing(true);
     }
 
     const draw = (e: MouseEvent<SVGSVGElement>) => {
-        if (svg.current === null || !isDrawing) {
+        if (svg.current === null || !isDrawing || currentPath === null) {
             return;
         }
 
@@ -41,7 +51,16 @@ export default function Whiteboard() {
         const x = Math.round(e.clientX - rect.left);
         const y = Math.round(e.clientY - rect.top);
 
-        setCurrentPath(prevState => `${prevState} L${x} ${y}`);
+        setCurrentPath(prevState => {
+            if (prevState === null) {
+                return prevState;
+            }
+
+            return {
+                ...prevState,
+                value: `${prevState?.value} L${x} ${y}`,
+            }
+        });
     }
 
     const stopDrawing = () => {
@@ -49,10 +68,14 @@ export default function Whiteboard() {
             return;
         }
 
-        setPaths(prevState => [...prevState, {value: currentPath, key: paths.length + 1}]);
+        setPaths(prevState => [...prevState, {
+            ...currentPath,
+            key: paths.length + 1,
+        }]);
+
         setEvents(prevState => [...prevState, {
             pathStateAfter: [...paths, {
-                value: currentPath,
+                ...currentPath,
                 key: paths.length + 1
             }]
         }]);
@@ -83,7 +106,7 @@ export default function Whiteboard() {
     }, [undoneEvents]);
 
     const clearPaths = () => {
-        setEvents(prevState => [...prevState, {pathStateAfter: paths}]);
+        setEvents(prevState => [...prevState, {pathStateAfter: []}]);
         setPaths([]);
     }
 
@@ -109,13 +132,13 @@ export default function Whiteboard() {
                  onMouseMove={(e) => draw(e)}>
                 {
                     paths.map((path) => (
-                        <SvgPath d={path.value} key={path.key}/>
+                        <SvgPath d={path.value} key={path.key} color={path.color} width={path.width}/>
                     ))
                 }
                 {
                     currentPath !== null &&
                     (
-                        <SvgPath d={currentPath}/>
+                        <SvgPath d={currentPath.value} color={currentPath.color} width={currentPath.width}/>
                     )
                 }
             </svg>
