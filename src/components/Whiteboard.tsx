@@ -131,6 +131,7 @@ export default function Whiteboard() {
         <div className="text-black">
             <button className="px-3 py-2 rounded-md bg-cyan-200 my-2" onClick={() => clearPaths()}>CLEAR</button>
             <svg ref={svg} id="whiteboard" width="1000" height="600" className="border-1 border-black bg-white"
+                 onDragStart={(e) => e.preventDefault()}
                  onMouseDown={(e) => startDrawing(e)}
                  onMouseUp={() => stopDrawing()}
                  onMouseMove={(e) => draw(e)}>
