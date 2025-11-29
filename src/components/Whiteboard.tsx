@@ -106,6 +106,10 @@ export default function Whiteboard() {
     }, [undoneEvents]);
 
     const clearPaths = () => {
+        if (paths.length === 0) {
+            return;
+        }
+
         setEvents(prevState => [...prevState, {pathStateAfter: []}]);
         setPaths([]);
     }
