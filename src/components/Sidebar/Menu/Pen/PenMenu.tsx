@@ -7,6 +7,7 @@ export default function PenMenu() {
         <div className="p-3 bg-white mt-3 rounded-lg">
             <MenuHeading title={"Pen"}/>
             <ColorsPicker/>
+            <WidthSelector/>
         </div>
     )
 }
