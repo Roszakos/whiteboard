@@ -9,7 +9,6 @@ type Path = {
     value: string;
     color: string;
     width: number;
-    // key?: number;
 }
 
 interface Event {
@@ -51,13 +50,11 @@ export default function Whiteboard() {
 
         setPaths(prevState => [...prevState, {
             ...currentPath,
-            // key: paths.length + 1,
         }]);
 
         setEvents(prevState => [...prevState, {
             pathStateAfter: [...paths, {
                 ...currentPath,
-                // key: paths.length + 1
             }]
         }]);
         setUndoneEvents([]);
