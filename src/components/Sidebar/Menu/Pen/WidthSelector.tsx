@@ -5,8 +5,8 @@ import {
     usePenSettingsDispatch
 } from "@/src/contexts/PenSettingsContext";
 
-const MIN_WIDTH = 6;
-const MAX_WIDTH = 24;
+const MIN_WIDTH = 1;
+const MAX_WIDTH = 36;
 
 export default function WidthSelector() {
     const penSettings = useContext(PenSettingsContext);

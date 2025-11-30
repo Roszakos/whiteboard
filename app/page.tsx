@@ -13,7 +13,7 @@ export default function Home() {
         penSettingsReducer,
         {
             color: '#000000',
-            width: 15
+            width: 3
         },
     );
 
