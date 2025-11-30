@@ -89,6 +89,7 @@ export default function Whiteboard() {
         }
 
         setEvents(prevState => [...prevState, {pathStateAfter: []}]);
+        setUndoneEvents([]);
         setPaths([]);
     }
 
