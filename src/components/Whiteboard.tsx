@@ -2,6 +2,7 @@
 import {MouseEvent as ReactMouseEvent, useCallback, useContext, useEffect, useRef, useState} from "react";
 import SvgPath from "@/src/components/SvgPath";
 import {PenSettingsContext} from "@/src/contexts/PenSettingsContext";
+import {ToolContext} from "@/src/contexts/ToolContext";
 
 const MOUSE_ACCEPTABLE_OUT_OF_BOUND_OFFSET = 30;
 
@@ -11,23 +12,69 @@ type Path = {
     width: number;
 }
 
+type Coordinates = {
+    x: number;
+    y: number;
+}
+
 interface Event {
     pathStateAfter: Path[];
 }
 
 export default function Whiteboard() {
-    const [isDrawing, setIsDrawing] = useState(false);
+    const [isMouseDown, setIsMouseDown] = useState(false);
+    const [lastMousePosition, setLastMousePosition] = useState<Coordinates | null>(null);
+    const [currentScreenTranslate, setCurrentScreenTranslate] = useState<Coordinates>({x: 0, y: 0});
+
     const [currentPath, setCurrentPath] = useState<Path | null>(null);
     const [paths, setPaths] = useState<Path[]>([]);
     const [events, setEvents] = useState<Event[]>([{pathStateAfter: []}]);
     const [undoneEvents, setUndoneEvents] = useState<Event[]>([]);
 
     const penSettings = useContext(PenSettingsContext);
+    const tool = useContext(ToolContext);
 
     const svg = useRef<SVGSVGElement | null>(null);
 
+    const handleMouseDown = (e: ReactMouseEvent<SVGSVGElement>) => {
+        if (tool === 'pen') {
+            startDrawing(e);
+        } else if (tool === 'hand') {
+            startScreenDragging(e);
+        }
+    }
+
+    const handleMouseUp = () => {
+        if (tool === 'pen') {
+            stopDrawing();
+        } else if (tool === 'hand') {
+            stopScreenDragging();
+        }
+    }
+
+    const startScreenDragging = (e: ReactMouseEvent<SVGSVGElement>) => {
+        if (isMouseDown || svg.current === null || lastMousePosition !== null) {
+            return;
+        }
+
+        setIsMouseDown(true);
+        setLastMousePosition({
+            x: e.clientX,
+            y: e.clientY,
+        });
+    }
+
+    const stopScreenDragging = () => {
+        if (!isMouseDown || lastMousePosition === null) {
+            return;
+        }
+
+        setIsMouseDown(false);
+        setLastMousePosition(null);
+    }
+
     const startDrawing = (e: ReactMouseEvent<SVGSVGElement>) => {
-        if (currentPath !== null || isDrawing || svg.current === null) {
+        if (currentPath !== null || isMouseDown || svg.current === null) {
             return;
         }
 
@@ -40,11 +87,11 @@ export default function Whiteboard() {
             color: penSettings.color,
             width: penSettings.width,
         });
-        setIsDrawing(true);
+        setIsMouseDown(true);
     }
 
     const stopDrawing = useCallback(() => {
-        if (svg.current === null || !isDrawing || currentPath === null) {
+        if (svg.current === null || !isMouseDown || currentPath === null) {
             return;
         }
 
@@ -59,8 +106,8 @@ export default function Whiteboard() {
         }]);
         setUndoneEvents([]);
         setCurrentPath(null);
-        setIsDrawing(false);
-    }, [currentPath, isDrawing, paths]);
+        setIsMouseDown(false);
+    }, [currentPath, isMouseDown, paths]);
 
     const undoLastEvent = useCallback(() => {
         if (events.length > 1) {
@@ -107,7 +154,7 @@ export default function Whiteboard() {
     }, [handleKeyPress])
 
     useEffect(() => {
-        if (isDrawing) {
+        if (isMouseDown) {
             const isMouseOutOfBound = (drawingRect: DOMRect, event: MouseEvent) => {
                 return (
                     (event.clientX + MOUSE_ACCEPTABLE_OUT_OF_BOUND_OFFSET) < drawingRect.x ||
@@ -118,7 +165,7 @@ export default function Whiteboard() {
             }
 
             const draw = (e: MouseEvent) => {
-                if (svg.current === null || !isDrawing || currentPath === null) {
+                if (svg.current === null || !isMouseDown || currentPath === null) {
                     return;
                 }
 
@@ -143,18 +190,55 @@ export default function Whiteboard() {
                 });
             };
 
-            window.addEventListener('mousemove', draw);
-            return () => window.removeEventListener('mousemove', draw);
+            const moveScreen = (e: MouseEvent) => {
+                if (lastMousePosition === null || svg.current === null) {
+                    return;
+                }
+
+                const offsetX = e.clientX - lastMousePosition.x;
+                const offsetY = e.clientY - lastMousePosition.y;
+
+                const newX = currentScreenTranslate.x + offsetX;
+                const newY = currentScreenTranslate.y + offsetY;
+
+                svg.current.style.transform = `translate(${newX}px, ${newY}px)`;
+                setCurrentScreenTranslate({
+                    x: newX,
+                    y: newY,
+                })
+                setLastMousePosition({
+                    x: e.clientX,
+                    y: e.clientY,
+                })
+            }
+
+            const handleMouseMove = (e: MouseEvent) => {
+                switch (tool) {
+                    case 'pen':
+                        draw(e);
+                        break;
+                    case 'eraser':
+                        return;
+                    case 'hand':
+                        moveScreen(e);
+                        return;
+                    default:
+                        return;
+                }
+            }
+
+            window.addEventListener('mousemove', handleMouseMove);
+            return () => window.removeEventListener('mousemove', handleMouseMove);
         }
-    }, [currentPath, isDrawing, stopDrawing]);
+    }, [currentPath, currentScreenTranslate, isMouseDown, lastMousePosition, stopDrawing, tool]);
 
     return (
-        <div className="text-black">
-            <button className="px-3 py-2 rounded-md bg-cyan-200 my-2" onClick={() => clearPaths()}>CLEAR</button>
-            <svg ref={svg} id="whiteboard" width="1000" height="600" className="border-1 border-black bg-white"
+        <div className="text-black w-full h-screen overflow-hidden">
+            {/*<button className="px-3 py-2 rounded-md bg-cyan-200 my-2" onClick={() => clearPaths()}>CLEAR</button>*/}
+            <svg ref={svg} id="whiteboard" width="200%" height="200%"
                  onDragStart={(e) => e.preventDefault()}
-                 onMouseDown={(e) => startDrawing(e)}
-                 onMouseUp={() => stopDrawing()}>
+                 onMouseDown={(e) => handleMouseDown(e)}
+                 onMouseUp={() => handleMouseUp()}>
                 {
                     paths.map((path, i) => (
                         <SvgPath d={path.value} key={i} color={path.color} width={path.width}/>
