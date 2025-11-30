@@ -34,55 +34,57 @@ export default function WidthSelector() {
     }
 
     useEffect(() => {
-        const updateWidth = (cursorXPosition: number) => {
-            if (widthBar.current === null) {
-                return;
+        if (isChangingWidth) {
+            const updateWidth = (cursorXPosition: number) => {
+                if (widthBar.current === null) {
+                    return;
+                }
+
+                const rect = widthBar.current.getBoundingClientRect();
+                const minX = rect.x;
+                const maxX = minX + rect.width;
+
+                const normalizedX = Math.min(Math.max(cursorXPosition, minX), maxX) - minX;
+                const newWidth = Math.max(
+                    MIN_WIDTH,
+                    Math.round((normalizedX / (maxX - minX)) * MAX_WIDTH)
+                );
+
+                setCurrentWidthPercentage(`${
+                    Math.min((newWidth / (MAX_WIDTH - MIN_WIDTH) - (MIN_WIDTH / (MAX_WIDTH - MIN_WIDTH))) * 100, 95)
+                }%`);
+
+                penSettingsDispatch({
+                    type: PEN_SETTINGS_DISPATCH_ACTIONS.CHANGE_WIDTH,
+                    width: newWidth
+                });
             }
 
-            const rect = widthBar.current.getBoundingClientRect();
-            const minX = rect.x;
-            const maxX = minX + rect.width;
+            const handleMouseUp = (e: MouseEvent) => {
+                if (!isChangingWidth) {
+                    return;
+                }
 
-            const normalizedX = Math.min(Math.max(cursorXPosition, minX), maxX) - minX;
-            const newWidth = Math.max(
-                MIN_WIDTH,
-                Math.round((normalizedX / (maxX - minX)) * MAX_WIDTH)
-            );
-
-            setCurrentWidthPercentage(`${
-                Math.min((newWidth / (MAX_WIDTH - MIN_WIDTH) - (MIN_WIDTH / (MAX_WIDTH - MIN_WIDTH))) * 100, 95)
-            }%`);
-
-            penSettingsDispatch({
-                type: PEN_SETTINGS_DISPATCH_ACTIONS.CHANGE_WIDTH,
-                width: newWidth
-            });
-        }
-
-        const handleMouseUp = (e: MouseEvent) => {
-            if (!isChangingWidth) {
-                return;
+                updateWidth(e.clientX);
+                document.body.style.cursor = 'auto';
+                setIsChangingWidth(false);
             }
 
-            updateWidth(e.clientX);
-            document.body.style.cursor = 'auto';
-            setIsChangingWidth(false);
-        }
+            const handleMouseMove = (e: MouseEvent) => {
+                if (!isChangingWidth) {
+                    return;
+                }
 
-        const handleMouseMove = (e: MouseEvent) => {
-            if (!isChangingWidth) {
-                return;
+                updateWidth(e.clientX);
             }
 
-            updateWidth(e.clientX);
-        }
+            window.addEventListener('mouseup', handleMouseUp);
+            window.addEventListener('mousemove', handleMouseMove);
 
-        window.addEventListener('mouseup', handleMouseUp);
-        window.addEventListener('mousemove', handleMouseMove);
-
-        return () => {
-            window.removeEventListener('mouseup', handleMouseUp);
-            window.removeEventListener('mousemove', handleMouseMove);
+            return () => {
+                window.removeEventListener('mouseup', handleMouseUp);
+                window.removeEventListener('mousemove', handleMouseMove);
+            }
         }
     }, [isChangingWidth, penSettingsDispatch])
 
