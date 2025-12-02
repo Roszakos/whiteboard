@@ -35,20 +35,13 @@ export default function Whiteboard() {
     const tool = useContext(ToolContext);
 
     const svg = useRef<SVGSVGElement | null>(null);
+    const svgContainer = useRef<HTMLDivElement | null>(null);
 
     const handleMouseDown = (e: ReactMouseEvent<SVGSVGElement>) => {
         if (tool === 'pen') {
             startDrawing(e);
         } else if (tool === 'hand') {
             startScreenDragging(e);
-        }
-    }
-
-    const handleMouseUp = () => {
-        if (tool === 'pen') {
-            stopDrawing();
-        } else if (tool === 'hand') {
-            stopScreenDragging();
         }
     }
 
@@ -64,14 +57,14 @@ export default function Whiteboard() {
         });
     }
 
-    const stopScreenDragging = () => {
+    const stopScreenDragging = useCallback(() => {
         if (!isMouseDown || lastMousePosition === null) {
             return;
         }
 
         setIsMouseDown(false);
         setLastMousePosition(null);
-    }
+    }, [isMouseDown, lastMousePosition]);
 
     const startDrawing = (e: ReactMouseEvent<SVGSVGElement>) => {
         if (currentPath !== null || isMouseDown || svg.current === null) {
@@ -130,16 +123,6 @@ export default function Whiteboard() {
         }
     }, [undoneEvents]);
 
-    const clearPaths = () => {
-        if (paths.length === 0) {
-            return;
-        }
-
-        setEvents(prevState => [...prevState, {pathStateAfter: []}]);
-        setUndoneEvents([]);
-        setPaths([]);
-    }
-
     const handleKeyPress = useCallback((e: KeyboardEvent) => {
         if (e.key.toLowerCase() === 'z' && e.ctrlKey) {
             undoLastEvent();
@@ -155,6 +138,14 @@ export default function Whiteboard() {
 
     useEffect(() => {
         if (isMouseDown) {
+            const handleMouseUp = () => {
+                if (tool === 'pen') {
+                    stopDrawing();
+                } else if (tool === 'hand') {
+                    stopScreenDragging();
+                }
+            }
+
             const isMouseOutOfBound = (drawingRect: DOMRect, event: MouseEvent) => {
                 return (
                     (event.clientX + MOUSE_ACCEPTABLE_OUT_OF_BOUND_OFFSET) < drawingRect.x ||
@@ -191,15 +182,36 @@ export default function Whiteboard() {
             };
 
             const moveScreen = (e: MouseEvent) => {
-                if (lastMousePosition === null || svg.current === null) {
+                if (lastMousePosition === null || svg.current === null || svgContainer.current === null) {
                     return;
                 }
 
                 const offsetX = e.clientX - lastMousePosition.x;
                 const offsetY = e.clientY - lastMousePosition.y;
 
-                const newX = currentScreenTranslate.x + offsetX;
-                const newY = currentScreenTranslate.y + offsetY;
+                const containerRect = svgContainer.current.getBoundingClientRect();
+                const svgRect = svg.current.getBoundingClientRect();
+                const remainingPixelsLeft = containerRect.left - svgRect.left;
+                const remainingPixelsTop = containerRect.top - svgRect.top;
+                const remainingPixelsRight = (containerRect.left + containerRect.width) - (svgRect.left + svgRect.width);
+                const remainingPixelsBottom = (containerRect.top + containerRect.height) - (svgRect.top + svgRect.height);
+
+                let xToTranslate;
+                if (offsetX >= 0) {
+                    xToTranslate = Math.min(offsetX, remainingPixelsLeft);
+                } else {
+                    xToTranslate = Math.max(offsetX, remainingPixelsRight);
+                }
+
+                let yToTranslate;
+                if (offsetY >= 0) {
+                    yToTranslate = Math.min(offsetY, remainingPixelsTop);
+                } else {
+                    yToTranslate = Math.max(offsetY, remainingPixelsBottom);
+                }
+
+                const newX = currentScreenTranslate.x + xToTranslate;
+                const newY = currentScreenTranslate.y + yToTranslate;
 
                 svg.current.style.transform = `translate(${newX}px, ${newY}px)`;
                 setCurrentScreenTranslate({
@@ -228,29 +240,34 @@ export default function Whiteboard() {
             }
 
             window.addEventListener('mousemove', handleMouseMove);
-            return () => window.removeEventListener('mousemove', handleMouseMove);
+            window.addEventListener('mouseup', handleMouseUp);
+            return () => {
+                window.removeEventListener('mousemove', handleMouseMove);
+                window.removeEventListener('mouseup', handleMouseUp);
+            }
         }
-    }, [currentPath, currentScreenTranslate, isMouseDown, lastMousePosition, stopDrawing, tool]);
+    }, [currentPath, currentScreenTranslate, isMouseDown, lastMousePosition, stopDrawing, stopScreenDragging, tool]);
 
     return (
-        <div className="text-black w-full h-screen overflow-hidden">
-            {/*<button className="px-3 py-2 rounded-md bg-cyan-200 my-2" onClick={() => clearPaths()}>CLEAR</button>*/}
-            <svg ref={svg} id="whiteboard" width="200%" height="200%"
-                 onDragStart={(e) => e.preventDefault()}
-                 onMouseDown={(e) => handleMouseDown(e)}
-                 onMouseUp={() => handleMouseUp()}>
-                {
-                    paths.map((path, i) => (
-                        <SvgPath d={path.value} key={i} color={path.color} width={path.width}/>
-                    ))
-                }
-                {
-                    currentPath !== null &&
-                    (
-                        <SvgPath d={currentPath.value} color={currentPath.color} width={currentPath.width}/>
-                    )
-                }
-            </svg>
+        <div className="text-black w-full h-screen overflow-hidden flex justify-center items-center p-4" ref={svgContainer}>
+            <div className="w-fit h-fit relative flex justify-center items-center p-4">
+                <svg ref={svg} id="whiteboard" className="bg-white border-6 border-black"
+                     style={{width: '10000px', height: '10000px'}}
+                     onDragStart={(e) => e.preventDefault()}
+                     onMouseDown={(e) => handleMouseDown(e)}>
+                    {
+                        paths.map((path, i) => (
+                            <SvgPath d={path.value} key={i} color={path.color} width={path.width}/>
+                        ))
+                    }
+                    {
+                        currentPath !== null &&
+                        (
+                            <SvgPath d={currentPath.value} color={currentPath.color} width={currentPath.width}/>
+                        )
+                    }
+                </svg>
+            </div>
         </div>
     )
 }
