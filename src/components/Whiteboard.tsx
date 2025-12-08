@@ -21,6 +21,39 @@ interface Event {
     pathStateAfter: Path[];
 }
 
+function getCoordsToTranslate(container: DOMRect, svg: DOMRect, mouseOffsetX: number, mouseOffsetY: number) {
+
+    const remainingPixelsLeft = container.left - svg.left;
+    const remainingPixelsTop = container.top - svg.top;
+    const remainingPixelsRight = (container.left + container.width) - (svg.left + svg.width);
+    const remainingPixelsBottom = (container.top + container.height) - (svg.top + svg.height);
+
+    let xToTranslate;
+    if (mouseOffsetX >= 0) {
+        xToTranslate = Math.min(mouseOffsetX, remainingPixelsLeft);
+    } else {
+        xToTranslate = Math.max(mouseOffsetX, remainingPixelsRight);
+    }
+
+    let yToTranslate;
+    if (mouseOffsetY >= 0) {
+        yToTranslate = Math.min(mouseOffsetY, remainingPixelsTop);
+    } else {
+        yToTranslate = Math.max(mouseOffsetY, remainingPixelsBottom);
+    }
+
+    return {xToTranslate, yToTranslate};
+}
+
+const isMouseOutOfBound = (drawingRect: DOMRect, event: MouseEvent) => {
+    return (
+        (event.clientX + MOUSE_ACCEPTABLE_OUT_OF_BOUND_OFFSET) < drawingRect.x ||
+        (event.clientY + MOUSE_ACCEPTABLE_OUT_OF_BOUND_OFFSET) < drawingRect.y ||
+        (event.clientX - MOUSE_ACCEPTABLE_OUT_OF_BOUND_OFFSET) > (drawingRect.x + drawingRect.width) ||
+        (event.clientY - MOUSE_ACCEPTABLE_OUT_OF_BOUND_OFFSET) > (drawingRect.y + drawingRect.height)
+    )
+}
+
 export default function Whiteboard() {
     const [isMouseDown, setIsMouseDown] = useState(false);
     const [lastMousePosition, setLastMousePosition] = useState<Coordinates | null>(null);
@@ -146,15 +179,6 @@ export default function Whiteboard() {
                 }
             }
 
-            const isMouseOutOfBound = (drawingRect: DOMRect, event: MouseEvent) => {
-                return (
-                    (event.clientX + MOUSE_ACCEPTABLE_OUT_OF_BOUND_OFFSET) < drawingRect.x ||
-                    (event.clientY + MOUSE_ACCEPTABLE_OUT_OF_BOUND_OFFSET) < drawingRect.y ||
-                    (event.clientX - MOUSE_ACCEPTABLE_OUT_OF_BOUND_OFFSET) > (drawingRect.x + drawingRect.width) ||
-                    (event.clientY - MOUSE_ACCEPTABLE_OUT_OF_BOUND_OFFSET) > (drawingRect.y + drawingRect.height)
-                )
-            }
-
             const draw = (e: MouseEvent) => {
                 if (svg.current === null || !isMouseDown || currentPath === null) {
                     return;
@@ -186,29 +210,13 @@ export default function Whiteboard() {
                     return;
                 }
 
-                const offsetX = e.clientX - lastMousePosition.x;
-                const offsetY = e.clientY - lastMousePosition.y;
-
-                const containerRect = svgContainer.current.getBoundingClientRect();
-                const svgRect = svg.current.getBoundingClientRect();
-                const remainingPixelsLeft = containerRect.left - svgRect.left;
-                const remainingPixelsTop = containerRect.top - svgRect.top;
-                const remainingPixelsRight = (containerRect.left + containerRect.width) - (svgRect.left + svgRect.width);
-                const remainingPixelsBottom = (containerRect.top + containerRect.height) - (svgRect.top + svgRect.height);
-
-                let xToTranslate;
-                if (offsetX >= 0) {
-                    xToTranslate = Math.min(offsetX, remainingPixelsLeft);
-                } else {
-                    xToTranslate = Math.max(offsetX, remainingPixelsRight);
-                }
-
-                let yToTranslate;
-                if (offsetY >= 0) {
-                    yToTranslate = Math.min(offsetY, remainingPixelsTop);
-                } else {
-                    yToTranslate = Math.max(offsetY, remainingPixelsBottom);
-                }
+                const {xToTranslate, yToTranslate} = getCoordsToTranslate(
+                    svgContainer.current.getBoundingClientRect(),
+                    svg.current.getBoundingClientRect(),
+                    // diffs between current and last mouse position
+                    e.clientX - lastMousePosition.x,
+                    e.clientY - lastMousePosition.y
+                );
 
                 const newX = currentScreenTranslate.x + xToTranslate;
                 const newY = currentScreenTranslate.y + yToTranslate;
@@ -249,7 +257,8 @@ export default function Whiteboard() {
     }, [currentPath, currentScreenTranslate, isMouseDown, lastMousePosition, stopDrawing, stopScreenDragging, tool]);
 
     return (
-        <div className="text-black w-full h-screen overflow-hidden flex justify-center items-center p-4" ref={svgContainer}>
+        <div className="text-black w-full h-screen overflow-hidden flex justify-center items-center p-4"
+             ref={svgContainer}>
             <div className="w-fit h-fit relative flex justify-center items-center p-4">
                 <svg ref={svg} id="whiteboard" className="bg-white border-6 border-black"
                      style={{width: '10000px', height: '10000px'}}
