@@ -5,6 +5,7 @@ import ToolsMenuItem from "@/src/components/Sidebar/Menu/Tools/ToolsMenuItem";
 import {useContext} from "react";
 import {SetToolContext, ToolContext} from "@/src/contexts/ToolContext";
 import MenuHeading from "@/src/components/Sidebar/Menu/MenuHeading";
+import MenuContainer from "@/src/components/Sidebar/Menu/MenuContainer";
 
 
 export default function ToolsMenu() {
@@ -16,7 +17,7 @@ export default function ToolsMenu() {
     }
 
     return (
-        <div className="p-3 bg-white mt-3 rounded-lg">
+        <MenuContainer>
             <MenuHeading title={"Tools"} />
 
             <div className="flex items-center justify-between gap-4 mt-1">
@@ -24,6 +25,6 @@ export default function ToolsMenu() {
                 <ToolsMenuItem icon={faEraser} isSelected={tool === 'eraser'} onClick={() => setTool('eraser')}/>
                 <ToolsMenuItem icon={faHand} isSelected={tool === 'hand'} onClick={() => setTool('hand')} />
             </div>
-        </div>
+        </MenuContainer>
     )
 }

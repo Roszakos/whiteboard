@@ -1,5 +1,6 @@
 import ToolsMenu from "@/src/components/Sidebar/Menu/Tools/ToolsMenu";
 import PenMenu from "@/src/components/Sidebar/Menu/Pen/PenMenu";
+import BackgroundMenu from "@/src/components/Sidebar/Menu/Background/BackgroundMenu";
 
 export default function Sidebar() {
     return (
@@ -10,7 +11,7 @@ export default function Sidebar() {
 
             <ToolsMenu />
             <PenMenu />
-
+            <BackgroundMenu />
             {/*<ShapesMenu />*/}
             {/*<HistoryMenu />*/}
 

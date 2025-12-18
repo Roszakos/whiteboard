@@ -3,6 +3,7 @@ import {MouseEvent as ReactMouseEvent, useCallback, useContext, useEffect, useRe
 import SvgPath from "@/src/components/SvgPath";
 import {PenSettingsContext} from "@/src/contexts/PenSettingsContext";
 import {ToolContext} from "@/src/contexts/ToolContext";
+import {BackgroundSettingsContext} from "@/src/contexts/BackgroundSettingsContext";
 
 const MOUSE_ACCEPTABLE_OUT_OF_BOUND_OFFSET = 30;
 
@@ -65,6 +66,7 @@ export default function Whiteboard() {
     const [undoneEvents, setUndoneEvents] = useState<Event[]>([]);
 
     const penSettings = useContext(PenSettingsContext);
+    const backgroundSettings = useContext(BackgroundSettingsContext);
     const tool = useContext(ToolContext);
 
     const svg = useRef<SVGSVGElement | null>(null);
@@ -260,8 +262,12 @@ export default function Whiteboard() {
         <div className="text-black w-full h-screen overflow-hidden flex justify-center items-center p-4"
              ref={svgContainer}>
             <div className="w-fit h-fit relative flex justify-center items-center p-4">
-                <svg ref={svg} id="whiteboard" className="bg-white border-6 border-black"
-                     style={{width: '10000px', height: '10000px'}}
+                <svg ref={svg} id="whiteboard" className="border-6 border-black"
+                     style={{
+                         width: '10000px',
+                         height: '10000px',
+                         backgroundColor: `rgb(${backgroundSettings.color.r}, ${backgroundSettings.color.g}, ${backgroundSettings.color.b})`
+                     }}
                      onDragStart={(e) => e.preventDefault()}
                      onMouseDown={(e) => handleMouseDown(e)}>
                     {
