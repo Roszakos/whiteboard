@@ -4,12 +4,13 @@ import SvgPath from "@/src/components/SvgPath";
 import {PenSettingsContext} from "@/src/contexts/PenSettingsContext";
 import {ToolContext} from "@/src/contexts/ToolContext";
 import {BackgroundSettingsContext} from "@/src/contexts/BackgroundSettingsContext";
+import {colorToRgb} from "@/src/utils/colors";
 
 const MOUSE_ACCEPTABLE_OUT_OF_BOUND_OFFSET = 30;
 
 type Path = {
     value: string;
-    color: string;
+    color: string | 'erased';
     width: number;
 }
 
@@ -77,6 +78,8 @@ export default function Whiteboard() {
             startDrawing(e);
         } else if (tool === 'hand') {
             startScreenDragging(e);
+        } else if (tool === 'eraser') {
+            startDrawing(e, true);
         }
     }
 
@@ -101,7 +104,7 @@ export default function Whiteboard() {
         setLastMousePosition(null);
     }, [isMouseDown, lastMousePosition]);
 
-    const startDrawing = (e: ReactMouseEvent<SVGSVGElement>) => {
+    const startDrawing = (e: ReactMouseEvent<SVGSVGElement>, erasing: boolean = false) => {
         if (currentPath !== null || isMouseDown || svg.current === null) {
             return;
         }
@@ -112,7 +115,7 @@ export default function Whiteboard() {
 
         setCurrentPath({
             value: `M${x} ${y}`,
-            color: penSettings.color,
+            color: erasing ? 'erased' : penSettings.color,
             width: penSettings.width,
         });
         setIsMouseDown(true);
@@ -174,7 +177,7 @@ export default function Whiteboard() {
     useEffect(() => {
         if (isMouseDown) {
             const handleMouseUp = () => {
-                if (tool === 'pen') {
+                if (tool === 'pen' || tool === 'eraser') {
                     stopDrawing();
                 } else if (tool === 'hand') {
                     stopScreenDragging();
@@ -240,6 +243,7 @@ export default function Whiteboard() {
                         draw(e);
                         break;
                     case 'eraser':
+                        draw(e);
                         return;
                     case 'hand':
                         moveScreen(e);
@@ -272,13 +276,17 @@ export default function Whiteboard() {
                      onMouseDown={(e) => handleMouseDown(e)}>
                     {
                         paths.map((path, i) => (
-                            <SvgPath d={path.value} key={i} color={path.color} width={path.width}/>
+                            <SvgPath d={path.value} key={i}
+                                     color={path.color === 'erased' ? colorToRgb(backgroundSettings.color) : path.color}
+                                     width={path.width}/>
                         ))
                     }
                     {
                         currentPath !== null &&
                         (
-                            <SvgPath d={currentPath.value} color={currentPath.color} width={currentPath.width}/>
+                            <SvgPath d={currentPath.value}
+                                     color={currentPath.color === 'erased' ? colorToRgb(backgroundSettings.color) : currentPath.color}
+                                     width={currentPath.width}/>
                         )
                     }
                 </svg>
